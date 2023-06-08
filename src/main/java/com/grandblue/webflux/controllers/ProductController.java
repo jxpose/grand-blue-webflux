@@ -13,6 +13,7 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -81,5 +82,14 @@ public class ProductController {
               return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).build());
             }
         );
+  }
+
+  @DeleteMapping(value = "/{productId}")
+  public Mono<ResponseEntity<Void>> deleteProduct(@PathVariable String productId) {
+    return productRepository.findByProductId(UUID.fromString(productId))
+        .flatMap(product -> productRepository.delete(product)
+            .then(Mono.just(ResponseEntity.ok().<Void>build()))
+        )
+        .defaultIfEmpty(ResponseEntity.notFound().build());
   }
 }
