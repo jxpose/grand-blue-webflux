@@ -1,4 +1,4 @@
-package com.grandblue.webflux.models;
+package com.grandblue.webflux.models.db;
 
 
 import org.springframework.data.annotation.Id;
@@ -25,10 +25,6 @@ public class ProductModel {
 
   public UUID getProductId() {
     return productId;
-  }
-
-  public void setProductId(byte[] data) {
-    this.productId = UUID.nameUUIDFromBytes(data);
   }
 
   public void generateProductId() {
