@@ -87,7 +87,7 @@ public class ProductController {
   @DeleteMapping(value = "/{productId}")
   public Mono<ResponseEntity<Void>> deleteProduct(@PathVariable String productId) {
     return productRepository.findByProductId(UUID.fromString(productId))
-        .flatMap(product -> productRepository.delete(product)
+        .flatMap(product -> productRepository.delete(product) //TODO Update the delete flag
             .then(Mono.just(ResponseEntity.ok().<Void>build()))
         )
         .defaultIfEmpty(ResponseEntity.notFound().build());
