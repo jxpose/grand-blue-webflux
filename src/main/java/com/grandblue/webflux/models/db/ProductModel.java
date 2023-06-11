@@ -22,28 +22,51 @@ public class ProductModel {
   @Column("product_description")
   private String productDescription;
 
+  @Column("delete_flag")
+  private Boolean deleteFlag;
 
-  public UUID getProductId() {
-    return productId;
+  public ProductModel() {
   }
 
-  public void generateProductId() {
+  public ProductModel(String productName, String productDescription) {
     this.productId = UUID.randomUUID();
-  }
-
-  public String getProductName() {
-    return productName;
+    this.productName = productName;
+    this.productDescription = productDescription;
   }
 
   public void setProductName(String productName) {
     this.productName = productName;
   }
 
+  public void setProductDescription(String productDescription) {
+    this.productDescription = productDescription;
+  }
+
+  public void setDeleteFlag(Boolean deleteFlag) {
+    this.deleteFlag = deleteFlag;
+  }
+
+  public void setSeq(Integer seq) {
+    this.seq = seq;
+  }
+
+  public UUID getProductId() {
+    return productId;
+  }
+
+  public void setProductId(UUID productId) {
+    this.productId = productId;
+  }
+
+  public String getProductName() {
+    return productName;
+  }
+
   public String getProductDescription() {
     return productDescription;
   }
 
-  public void setProductDescription(String productDescription) {
-    this.productDescription = productDescription;
+  public Boolean getDeleteFlag() {
+    return deleteFlag;
   }
 }

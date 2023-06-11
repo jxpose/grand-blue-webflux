@@ -3,7 +3,7 @@ package com.grandblue.webflux.models.requests;
 import org.springframework.validation.Errors;
 import org.springframework.validation.ValidationUtils;
 
-public record AddProductRequestModel(String productName, String productDescription) implements ValidatedRequest {
+public record ProductRequest(String productName, String productDescription) implements ValidatedRequest {
 
   @Override
   public void validate(Errors errors) {
