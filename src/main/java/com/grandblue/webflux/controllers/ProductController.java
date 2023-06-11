@@ -1,15 +1,15 @@
 package com.grandblue.webflux.controllers;
 
 import com.grandblue.webflux.common.validator.GrandBlueValidator;
-import com.grandblue.webflux.models.db.ProductModel;
+import com.grandblue.webflux.exceptions.DataNotFoundException;
 import com.grandblue.webflux.models.requests.ProductRequest;
+import com.grandblue.webflux.models.response.GrandBlueResponse;
+import com.grandblue.webflux.models.response.ProductResponse;
 import com.grandblue.webflux.services.ProductService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.Errors;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,10 +19,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import java.util.stream.Collectors;
 
 
 @RestController
@@ -39,26 +36,38 @@ public class ProductController {
     this.validator = validator;
   }
 
-  @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-  public Flux<ProductModel> getProducts() {
-    return productService.getProduct();
+  @GetMapping
+  public Mono<ResponseEntity<GrandBlueResponse<ProductResponse>>> getProducts() {
+    return productService.getProduct()
+        .collectList()
+        .map(GrandBlueResponse::new)
+        .map(ResponseEntity::ok);
   }
 
   @GetMapping(value = "/{productId}")
-  public Mono<ResponseEntity<ProductModel>> getProduct(@PathVariable String productId) {
+  public Mono<ResponseEntity<GrandBlueResponse<ProductResponse>>> getProduct(@PathVariable String productId) {
     return productService.getProduct(productId)
+        .map(GrandBlueResponse::new)
         .map(ResponseEntity::ok)
-        .defaultIfEmpty(ResponseEntity.badRequest().build());
+        .onErrorResume(DataNotFoundException.class, e -> Mono.just(ResponseEntity.notFound().build()));
   }
 
   @PostMapping
-  public Mono<ResponseEntity<ProductModel>> saveProduct(@RequestBody ProductRequest productRequest) {
+  public Mono<ResponseEntity<GrandBlueResponse<ProductResponse>>> saveProduct(@RequestBody ProductRequest productRequest) {
     return validator.validateAsync(productRequest, productRequest.getClass().getSimpleName())
         .then(Mono.defer(() -> productService.saveProduct(productRequest)
-            .map(savedProduct -> ResponseEntity.status(HttpStatus.CREATED).body(savedProduct))))
+            .map(GrandBlueResponse::new)
+            .map(response -> ResponseEntity.status(HttpStatus.CREATED).body(response))))
         .onErrorResume(GrandBlueValidator.ValidationException.class, exception -> {
-          logValidationErrors(exception.getErrors());
-          return Mono.just(ResponseEntity.badRequest().build());
+
+          GrandBlueResponse<ProductResponse> response = GrandBlueResponse.error(
+              exception.getErrors()
+                  .getAllErrors()
+                  .stream()
+                  .map(ObjectError::toString)
+                  .toList()
+          );
+          return Mono.just(ResponseEntity.badRequest().body(response));
         })
         .onErrorResume(Exception.class, exception -> {
           logger.error(exception.getMessage(), exception);
@@ -67,15 +76,23 @@ public class ProductController {
   }
 
   @PutMapping(value = "/{productId}")
-  public Mono<ResponseEntity<ProductModel>> updateProduct(@PathVariable String productId, @RequestBody ProductRequest productRequest) {
+  public Mono<ResponseEntity<GrandBlueResponse<ProductResponse>>> updateProduct(@PathVariable String productId, @RequestBody ProductRequest productRequest) {
     return validator.validateAsync(productRequest, productRequest.getClass().getSimpleName())
         .then(Mono.defer(() -> productService.updateProduct(productId, productRequest)
+            .map(GrandBlueResponse::new)
             .map(ResponseEntity::ok)
             .defaultIfEmpty(ResponseEntity.badRequest().build())))
         .onErrorResume(GrandBlueValidator.ValidationException.class, exception -> {
-          logValidationErrors(exception.getErrors());
-          return Mono.just(ResponseEntity.badRequest().build());
+          GrandBlueResponse<ProductResponse> response = GrandBlueResponse.error(
+              exception.getErrors()
+                  .getAllErrors()
+                  .stream()
+                  .map(ObjectError::toString)
+                  .toList()
+          );
+          return Mono.just(ResponseEntity.badRequest().body(response));
         })
+        .onErrorResume(DataNotFoundException.class, exception -> Mono.just(ResponseEntity.notFound().build()))
         .onErrorResume(Exception.class, exception -> {
           logger.error(exception.getMessage(), exception);
           return Mono.just(ResponseEntity.internalServerError().build());
@@ -87,9 +104,5 @@ public class ProductController {
     return productService.deleteProduct(productId)
         .then(Mono.just(ResponseEntity.ok().<Void>build()))
         .defaultIfEmpty(ResponseEntity.notFound().build());
-  }
-
-  private void logValidationErrors(Errors errors) {
-    logger.error("Validation error: " + errors.getAllErrors().stream().map(ObjectError::toString).collect(Collectors.joining("\n")));
   }
 }
